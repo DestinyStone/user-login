@@ -6,6 +6,7 @@ import com.demo.demo002.entity.User;
 import io.jsonwebtoken.Claims;
 
 import java.util.HashMap;
+import java.util.UUID;
 
 /**
  * @Author: zhouxiaofeng
@@ -49,5 +50,22 @@ public class UserUtil {
 
     public static String getPasswordEncrypt(String password) {
         return password;
+    }
+
+    public static User generateGuest(String userName) {
+        User user = new User();
+        user.setId(UUID.randomUUID().toString());
+        user.setUserName(userName);
+        user.setMode(1);
+        return user;
+    }
+
+    public static User generateUser(String userName, String password) {
+        User user = new User();
+        user.setId(UUID.randomUUID().toString());
+        user.setUserName(userName);
+        user.setPassword(UserUtil.getPasswordEncrypt(password));
+        user.setMode(0);
+        return user;
     }
 }

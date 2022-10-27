@@ -1,9 +1,5 @@
 package com.demo.demo002.entity;
 
-import com.demo.demo002.common.tools.UserUtil;
-
-import java.util.UUID;
-
 /**
  * @Author: zhouxiaofeng
  * @Date: 2022/10/27 15:54
@@ -16,20 +12,26 @@ public class User {
 
     private String password;
 
+    /**
+     * 0 正常密码登录 1 无需密码 游客身份
+     */
+    private Integer mode;
+
     public User() {
     }
 
     public User(String userName, String password) {
         this.userName = userName;
         this.password = password;
+        this.mode = 0;
     }
 
-    public static User generateUser(String userName, String password) {
-        User user = new User();
-        user.setId(UUID.randomUUID().toString());
-        user.setUserName(userName);
-        user.setPassword(UserUtil.getPasswordEncrypt(password));
-        return user;
+    public Integer getMode() {
+        return mode;
+    }
+
+    public void setMode(Integer mode) {
+        this.mode = mode;
     }
 
     public String getId() {

@@ -1,9 +1,10 @@
 package com.demo.demo002.store;
 
+import cn.hutool.core.util.RandomUtil;
+import com.demo.demo002.common.tools.UserUtil;
 import com.demo.demo002.entity.User;
 
 import java.util.Vector;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @Author: zhouxiaofeng
@@ -15,6 +16,22 @@ public class UserStore {
 
     public static void addUser(User user) {
         userList.add(user);
+    }
+
+    public static User addRandomUser() {
+        String userName = "";
+        while (true) {
+            userName = RandomUtil.randomString(10);
+            User user = getUserByUserName(userName);
+            if (user != null) {
+                continue;
+            }
+
+            User insertUser = UserUtil.generateGuest(userName);
+            addUser(insertUser);
+            return insertUser;
+        }
+
     }
 
     public static User getUserByUserName(String userName) {

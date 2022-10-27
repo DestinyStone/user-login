@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <!-- import CSS -->
+    <link rel="stylesheet" href="/static/element-ui/theme-chalk/index.css">
+</head>
+<body>
+<div id="app" style="display: flex; justify-content: center;">
+    <el-card style="width: 500px" >
+        <div style="display: flex; justify-content: space-between;">
+            <div>欢迎你: {{user.userName}}</div>
+            <div>身份: {{identity}}</div>
+        </div>
+        <div style="margin-top: 30px; display: flex; justify-content: center;">
+            <audio style="width: 450px" src="/static/mp3/牛仔很忙.mp3" controls></audio>
+        </div>
+        <div style="display: flex; justify-content: center; margin-top: 30px;">
+            <el-button type="primary" @click="handlerLogout">注销</el-button>
+        </div>
+    </el-card>
+</div>
+</body>
+<script src="/static/cookie/js-cookie.js"></script>
+<script src="/static/vue/vue.min.js"></script>
+<script src="/static/element-ui/index.js"></script>
+<script src="/static/axios/axios.js"></script>
+<script>
+    new Vue({
+        el: '#app',
+        data: function() {
+            return {
+                user: {},
+            }
+        },
+        methods: {
+          init() {
+              let token = Cookies.get("token");
+              if (token === null || token === "" || token === undefined) {
+                  alert("用户未登录");
+                  window.location.href = "login";
+                  return;
+              }
+
+              axios.get(`/user/detail?token=${token}`).then(res => {
+                  let data = res.data;
+                  if (data.code !== 200) {
+                      alert("凭证已过期, 请重新登录");
+                      window.location.href = "login";
+                      return;
+                  }
+                  this.user = data.data;
+              });
+          },
+            handlerLogout() {
+                Cookies.set("token", "");
+                alert("注销成功");
+                window.location.href = "login";
+            }
+
+        },
+        computed: {
+          identity() {
+              if (this.user.mode === 1) {
+                  return "游客";
+              }
+              if (this.user.mode === 0) {
+                  return "普通用户";
+              }
+              return "";
+          }
+        },
+        created() {
+            this.init();
+        }
+    })
+</script>
+</html>

@@ -3,57 +3,156 @@
 <head>
     <meta charset="UTF-8">
     <title>登录</title>
-    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <link rel="stylesheet" href="/static/element-ui/theme-chalk/index.css">
 </head>
 <body>
 <div id="app" style="display: flex; justify-content: center; margin-top: 100px;">
     <div style="width: 400px">
         <el-card>
             <div style="display: flex; position: relative;">
-                <div>当前： {{currentTitle}}</div>
-                <div style="position: absolute; right: 0; cursor: pointer; color: #409EEF" @click="switchMode">切换登录方式</div>
+                <div>登录方式： {{currentTitle}}</div>
+                <div style="position: absolute; right: 0; cursor: pointer; color: #409EEF" @click="switchMode">切换</div>
             </div>
             <div style="margin-top: 40px; display: flex; justify-content: center;" v-show="mode === 'guest'">
-                <el-image :src="qrCodeUrl" style="width: 115px; height: 115px;"/>
+                <div v-loading="isTriggerQrCode"
+                     element-loading-spinner="el-icon-loading"
+                     element-loading-background="rgba(0, 0, 0, 0.8)"
+                     element-loading-text="扫码中"
+                     style="position:relative; border-radius: 10px; overflow: hidden">
+                    <el-image :src="qrCodeUrl" style="width: 115px; height: 115px;"/>
+                </div>
             </div>
             <div style="margin-top: 40px;" v-show="mode === 'userNameAndPassword'">
-                <div style="display: flex;">
-                    <div style="height: 40px; line-height: 40px; ">用户名: </div>
-                    <el-input style="width: 250px; margin-left: 20px;"/>
+                <div v-if="inputMode === 'userName'">
+                    <div style="position:relative;">
+                        <div style="display: flex;">
+                            <div style="height: 40px; line-height: 40px; ">用户名: </div>
+                            <el-input v-model="userName" style="width: 250px; margin-left: 20px;"/>
+                        </div>
+                        <div v-if="userNameWarning" style="position:absolute; left: 75px; font-size: 12px; color: red; bottom: -20px">{{userNameHint}}</div>
+                    </div>
+                    <div style="margin-top: 40px; display: flex; justify-content: center;"><el-button type="primary" @click="handlerNext('userName')">下一步</el-button></div>
                 </div>
-                <div style="margin-top: 40px; display: flex; justify-content: center;"><el-button type="primary">下一步</el-button></div>
+                <div v-if="inputMode === 'password'">
+                    <div style="position:relative;">
+                        <div style="display: flex;">
+                            <div style="height: 40px; line-height: 40px; ">密码: </div>
+                            <el-input v-model="password" style="width: 250px; margin-left: 20px;"/>
+                        </div>
+                        <div v-if="passwordWarning" style="position:absolute; left: 75px; font-size: 12px; color: red; bottom: -20px">{{passwordHint}}</div>
+                    </div>
+                    <div style="margin-top: 40px; display: flex; justify-content: center;"><el-button type="primary" @click="handlerNext('password')">登录</el-button></div>
+                </div>
             </div>
         </el-card>
     </div>
 </div>
 </body>
-<!-- import Vue before Element -->
-<script src="https://unpkg.com/vue@2/dist/vue.js"></script>
-<!-- import JavaScript -->
-<script src="https://unpkg.com/element-ui/lib/index.js"></script>
-<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-<script>
+<script src="/static/cookie/js-cookie.js"></script>
+<script src="/static/vue/vue.min.js"></script>
+<script src="/static/element-ui/index.js"></script>
+<script src="/static/axios/axios.js"></script>
+<script type="module">
     new Vue({
         el: '#app',
         data: function() {
             return {
+                inputMode: "userName",
+                qrCodeStatusTime: null,
+                isTriggerQrCode: false,
 				qrCodeUrl: "",
                 mode: "userNameAndPassword",
                 userName: "",
+                userNameHint: "",
+                userNameWarning: false,
                 password: "",
+                passwordHint: "",
+                passwordWarning: false,
                 code: "",
                 visible: false ,
             }
         },
         methods: {
+            handlerNext(status) {
+                if (status === "userName") {
+                    if (this.userName === null || this.userName === undefined || this.userName === '') {
+                        this.userNameHint = "用户名不能为空";
+                        this.userNameWarning = true;
+                        return;
+                    }
+                    axios.get(`/user/exist?userName=${this.userName}`).then(res => {
+                        let data = res.data.data;
+                        if (data === "0") {
+                            this.userNameHint = "用户名不存在";
+                            this.userNameWarning = true;
+                            return;
+                        }
+                        this.userNameWarning = false;
+                        this.inputMode = "password";
+                    })
+                }
+
+
+                if (status === "password") {
+                    if (this.userName === null || this.userName === undefined || this.userName === '') {
+                        this.passwordHint = "密码不能为空";
+                        this.passwordWarning = true;
+                        return;
+                    }
+
+                    axios.get(`/user/exist?userName=${this.userName}&password=${this.password}`).then(res => {
+                        let data = res.data.data;
+                        if (data === "0") {
+                            this.passwordHint = "密码错误";
+                            this.passwordWarning = true;
+                            return;
+                        }
+                        this.passwordWarning = false;
+                        this.login();
+                    })
+                }
+            },
             switchMode() {
                 this.mode = this.mode === "userNameAndPassword" ? "guest" : "userNameAndPassword"
             },
 			setQrCode() {
 				axios.get("/user/get/qr/code").then(res => {
-					this.qrCodeUrl = "data:image/png;base64," + res.data.data;
+				    let data = res.data.data;
+					this.qrCodeUrl = "data:image/png;base64," + data.value;
+                    this.queryQrCodeStatus(data.uuid);
 				})
-			}
+			},
+            queryQrCodeStatus(uuid) {
+                this.qrCodeStatusTime = setInterval(() => {
+                    axios.get(`/user/get/qr/code/status?uuid=${uuid}`).then(res => {
+                        let data = res.data.data;
+                        if (data.status === "2") {
+                            this.triggerLogin(data.token);
+                            return;
+                        }
+                        this.isTriggerQrCode = data.status === "1" ? true : false;
+                    })
+                }, 300)
+            },
+            triggerLogin(token) {
+                ELEMENT.Message({type: "success", message: "登录成功"});
+                clearInterval(this.qrCodeStatusTime);
+                Cookies.set("token", token);
+                setTimeout(() => {
+                    window.location.href = "index"
+                }, 1000);
+            },
+            login() {
+                axios.get(`/user/login?userName=${this.userName}&password=${this.password}`).then(res => {
+                    let data = res.data.data;
+                    console.log(data);
+                    Cookies.set("token", data);
+                    ELEMENT.Message({type: "success", message: "登录成功"});
+                    setTimeout(() => {
+                        window.location.href = "index"
+                    }, 1000);
+                })
+            }
         },
         computed:{
             currentTitle() {

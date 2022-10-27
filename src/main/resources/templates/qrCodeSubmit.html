@@ -2,26 +2,76 @@
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <!-- 引入样式 -->
-    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <link rel="stylesheet" href="/static/element-ui/theme-chalk/index.css">
 </head>
 <body>
-<div id="app">
-    <el-button @click="visible = true">按钮</el-button>
-    <el-dialog :visible.sync="visible" title="Hello world">
-        <p>欢迎使用 Element</p>
-    </el-dialog>
+<div id="app" style="display: flex; justify-content: center;">
+    <div>
+        <div>您正在进行游客登陆中, 点击确认进行登录</div>
+        <div style="display: flex; justify-content: center; margin-top: 30px;">
+            <el-button type="primary" style="width: 180px" @click="handlerSubmit">确认</el-button>
+        </div>
+        <div style="text-align: center; margin-top: 20px;" v-if="isTriggerSubmit">登录成功 {{count}}s后自动退出</div>
+    </div>
 </div>
 </body>
+<script type="text/javascript" src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
 <!-- 先引入 Vue -->
-<script src="https://unpkg.com/vue/dist/vue.js"></script>
+<script src="/static/vue/vue.min.js"></script>
 <!-- 引入组件库 -->
-<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+<script src="/static/element-ui/index.js"></script>
+<script src="/static/axios/axios.js"></script>
 <script>
     new Vue({
         el: '#app',
         data: function() {
-            return { visible: false }
+            return {
+                triggerLoginTime: null,
+                qrCodeStatusTime: null,
+                isTriggerSubmit: false,
+                count: 3,
+            }
+        },
+        methods: {
+            handlerSubmit() {
+                let uuid =  window.location.href.split('?')[1].split("=")[1];
+                clearInterval(this.qrCodeStatusTime);
+                setTimeout(() => {
+                    axios.get(`/user/trigger/qr/code?uuid=${uuid}&status=2`).then(res => {
+                        this.isTriggerSubmit = true
+                        this.triggerLoginAfter();
+                    })
+                }, 500);
+            },
+            setQpCodeStatus() {
+                let uuid =  window.location.href.split('?')[1].split("=")[1];
+                axios.get(`/user/trigger/qr/code?uuid=${uuid}&status=1`)
+                this.qrCodeStatusTime = setInterval(() => {
+                    axios.get(`/user/trigger/qr/code?uuid=${uuid}&status=1`)
+                }, 300)
+            },
+            triggerLoginAfter() {
+                if (this.triggerLoginTime !== null) {
+                    return;
+                }
+                this.count = 3;
+                this.triggerLoginTime = setInterval(() => {
+                    if (this.count === 0) {
+                        clearInterval(this.triggerLoginTime);
+                        this.triggerLoginTime = null;
+                        window.opener = null
+                        window.close();
+                        wx.closeWindow()
+                        return;
+                    }
+                    this.count--;
+                }, 1000)
+            }
+        },
+        created() {
+            this.setQpCodeStatus();
         }
     })
 </script>
